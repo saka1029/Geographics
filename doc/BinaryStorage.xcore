@@ -1,0 +1,28 @@
+@startuml
+
+class Area {
+    file : File
+    buffer : ByteBuffer
+    points : ShortBuffer
+    dirty : boolen = false
+    get(xx, yy : long) : int
+    put(xx, yy : long, v : int) : void
+    write(all : Set<File>) : void
+    
+}
+Area --+ BinaryStorage
+
+class BinaryStorage implements Closeable {
+    directory : File
+    all : Set<File>
+    map : LinkedHashMap<Long, Area>
+    
+    - file(xa, ya : long) : File
+    - area(xx, yy : long, create : boolean) : Area
+    + get(xx, yy : long) : int
+    + get(xx, yy : long, data : short[][]) : void
+    + put(xx, yy : long, point : int) : void
+    + close() : void
+}
+
+@enduml
