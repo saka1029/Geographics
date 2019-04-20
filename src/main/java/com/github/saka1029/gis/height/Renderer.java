@@ -1,9 +1,7 @@
 package com.github.saka1029.gis.height;
 
 import java.awt.Color;
-import java.awt.Graphics;
 import java.awt.image.BufferedImage;
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.Logger;
@@ -17,12 +15,13 @@ public class Renderer {
     static Logger logger = Logging.logger(Renderer.class);
 
     /** メッシュサイズ(5m) */
-    static final double CELL_SIZE = 1;
+    static final double CELL_SIZE = 1.0;
     /** 傾斜時の水平距離 */
     static final double K = CELL_SIZE * Math.sqrt(2D) / 2D;
     /** 傾斜度計算時の参照セル範囲（対象セル±SHADING_RANGEの範囲で計算） */
     static final int SHADING_RANGE = 2;
-    static final double SIN45 = Math.sin(Math.PI / 4.0);
+    /** 光源の角度 */
+    static final double 入射角 = 40.0 * Math.PI / 180.0;
 
     static double slope(DB db, long pp, long qq, int x, int y) {
         double center = HeightEnum.height(db.get(pp + x, qq + y));
@@ -39,9 +38,6 @@ public class Renderer {
                 HeightEnum t = HeightEnum.type(typeHeight);
                 double h = HeightEnum.height(typeHeight);
                 switch (t) {
-                case 海水面:
-                case 内水面:
-                    break;
                 case 地表面:
                 case 表層面:
                 case その他:
@@ -53,7 +49,7 @@ public class Renderer {
         return Math.atan(height / distance);
     }
 
-    static void draw(DB db, long key, Graphics g) {
+    static void draw(DB db, long key, BufferedImage image) {
         long pp = db.pp(key) * DB.ENTRY_SIZE;
         long qq = db.qq(key) * DB.ENTRY_SIZE;
         for (int x = 0; x < DB.ENTRY_SIZE; ++x)
@@ -62,25 +58,18 @@ public class Renderer {
                 HeightEnum type = HeightEnum.type(typeHeight);
                 double height = HeightEnum.height(typeHeight);
                 switch (type) {
-                case EMPTY:
-                case データなし:
-                case データ無し:
-                case 内水面:
-//                    height = -50;
-                    /* fall through */
-                case 海水面:
-                    break;
                 case 地表面:
                 case 表層面:
                 case その他:
                     double slope = slope(db, pp, qq, x, y);
-                    double shading = Math.max(0.0, Math.sin(slope * 2D + SIN45));
+                    double deg = 1.2 * slope + 入射角;
+//                    double deg = 2.0 * slope + 入射角;
+//                    double deg = - slope * 2.0 - 入射角 + Math.PI / 2.0;
+                    double shading = Math.max(0.0, Math.sin(deg));
+//                    if (slope < 0 && shading == 0)
+//                        logger.finest("slope=" + slope + " deg=" + deg);
                     Color cc = Color.getHSBColor((float)HeightColor.HEIGHT_COLOR.hue(height), 1f, (float)shading);
-//                    Color c = HeightColor.HEIGHT_COLOR.get(height);
-//                    float[] hsv = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
-//                    Color cc = Color.getHSBColor(hsv[0], hsv[1], (float)(hsv[2] * shading));
-                    g.setColor(cc);
-                    g.fillRect(x, y, 1, 1);
+                    image.setRGB(x, y, cc.getRGB());
                     break;
                 }
             }
@@ -89,10 +78,7 @@ public class Renderer {
     static void write(DB db, long key, File outFile) throws IOException {
         BufferedImage image= new BufferedImage(
             DB.ENTRY_SIZE, DB.ENTRY_SIZE, BufferedImage.TYPE_INT_ARGB);
-        Graphics graphics = image.createGraphics();
-        try (Closeable g = () -> graphics.dispose()) {
-            draw(db, key, graphics);
-        }
+        draw(db, key, image);
         ImageIO.write(image, "png", outFile);
     }
 

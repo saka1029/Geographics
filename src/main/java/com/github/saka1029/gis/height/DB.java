@@ -35,7 +35,7 @@ public class DB implements Closeable {
     /** 全てのEntryのキーです。 */
     final Set<Long> keys;
     /** キャッシュです。 */
-    final Map<Long, Entry> cache;
+    final Map<Long, Rec> cache;
 
     public DB(File baseDir, int z, int cacheSize) {
         if (cacheSize <= 0)
@@ -43,14 +43,14 @@ public class DB implements Closeable {
         this.baseDir = baseDir;
         if (!baseDir.exists()) baseDir.mkdirs();
         this.z = z;
-        this.cache = new LinkedHashMap<Long, Entry>() {
+        this.cache = new LinkedHashMap<Long, Rec>() {
             /**
              * キャッシュサイズを超えた時、最も過去にアクセスされたEntryを
              * ディスクに書き込んで、キャッシュから除外します。
              */
-            protected boolean removeEldestEntry(Map.Entry<Long, Entry> eldest) {
+            protected boolean removeEldestEntry(Map.Entry<Long, Rec> eldest) {
                 if (size() <= cacheSize) return false;
-                Entry entry = eldest.getValue();
+                Rec entry = eldest.getValue();
                 try {
                     entry.close();// 削除エントリをディスクに保存します。
                 } catch (IOException e) {
@@ -98,7 +98,7 @@ public class DB implements Closeable {
         long qq = qqq / ENTRY_SIZE;
         long key = key(pp, qq);
         if (!keys.contains(key)) return 0;
-        Entry entry = cache.computeIfAbsent(key, k -> new Entry(file(k), true));
+        Rec entry = cache.computeIfAbsent(key, k -> new Rec(file(k), true));
         int p = (int)ppp % ENTRY_SIZE;
         int q = (int)qqq % ENTRY_SIZE;
         return entry.get(p, q);
@@ -123,11 +123,11 @@ public class DB implements Closeable {
         long qq = qqq / ENTRY_SIZE;
         long key = key(pp, qq);
         File file = file(key);
-        Entry entry;
+        Rec entry;
         if (keys.contains(key))
-            entry = cache.computeIfAbsent(key, k -> new Entry(file, true));
+            entry = cache.computeIfAbsent(key, k -> new Rec(file, true));
         else {
-            cache.put(key, entry = new Entry(file, false));
+            cache.put(key, entry = new Rec(file, false));
             keys.add(key);
         }
         int p = (int)ppp % ENTRY_SIZE;
@@ -143,20 +143,20 @@ public class DB implements Closeable {
     /** DBをクローズします。ディスクに反映されていないキャッシュのエントリがあれば書き込みます。 */
     @Override
     public void close() throws IOException {
-        for (Entry e : cache.values())
+        for (Rec e : cache.values())
             if (e != null)
                 e.close();
     }
 }
 
-class Entry implements Closeable {
+class Rec implements Closeable {
 
     final File file;
     final ByteBuffer buffer;
     final IntBuffer points;
     boolean dirty;
 
-    public Entry(File file, boolean read) {
+    public Rec(File file, boolean read) {
         this.file = file;
         this.buffer = ByteBuffer.allocateDirect(DB.ENTRY_SIZE * DB.ENTRY_SIZE * Integer.BYTES);
         this.points = buffer.asIntBuffer();
