@@ -44,6 +44,8 @@ public class Renderer {
                     height += ij < 0 ? center - h : h - center;
                     distance += Math.abs(ij) * K;
                     break;
+                default:
+                    break;
                 }
             }
         return Math.atan(height / distance);
@@ -70,6 +72,8 @@ public class Renderer {
 //                        logger.finest("slope=" + slope + " deg=" + deg);
                     Color cc = Color.getHSBColor((float)HeightColor.HEIGHT_COLOR.hue(height), 1f, (float)shading);
                     image.setRGB(x, y, cc.getRGB());
+                    break;
+                default:
                     break;
                 }
             }
