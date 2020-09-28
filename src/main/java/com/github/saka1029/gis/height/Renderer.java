@@ -73,8 +73,6 @@ public class Renderer {
                     Color cc = Color.getHSBColor((float)HeightColor.HEIGHT_COLOR.hue(height), 1f, (float)shading);
                     image.setRGB(x, y, cc.getRGB());
                     break;
-                default:
-                    break;
                 }
             }
     }
